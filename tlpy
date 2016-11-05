@@ -1,23 +1,26 @@
 #!/bin/bash
 
+## Make sure the subshells are killed too if tlpy is killed
 trap "kill 0" SIGINT
 
+## Store the location from which tlpy is launched
 export CWD=$PWD
 
-if [ "$1" = "dev" ]
+## Launch gulp if in dev mode, wait 2 sec for gulp to finish
+if [ "$1" == "dev" ]
 then
     (gulp &)
-else
-    (gulp > /dev/null 2>&1 &)
+    sleep 2
 fi
 
-sleep 1.5
-
+## Go to directory where the flask app is located 
 cd app
 
+## Set environment for flask script
 export FLASK_APP=app
 export FLASK_DEBUG=1
 
+## Set a default filename
 if [ -z "$1" ] || [ "$1" == "dev" ]
 then
     export TLPY_PATH="${CWD}/untitled.tlpy"
@@ -25,15 +28,25 @@ else
     export TLPY_PATH="$CWD/$1"
 fi
 
-if [ "$1" = "dev" ]
+## Run flask server, mask output if not in dev mode
+if [ "$1" == "dev" ]
 then
-    (flask run &)
+    (flask run -p 7129 &)
 else
-    (flask run > /dev/null 2>&1 &)
+    (flask run -p 7129 > /dev/null 2>&1 &)
 fi
 
-python -m webbrowser "http://127.0.0.1:5000/"
+## Launch the browser with the notebook
+export TLPY_HOST="http://localhost:7129/"
+python -m webbrowser "${TLPY_HOST}"
 
+## Go back to the directory we started from
 cd $CWD
 
+## Do no quit the script until killed with CTRL-C
+echo "-=- -=- -=- -=- -=- -=- -=- -=- -=- -=- -=- -=- -=-"
+echo " Welcome to your Telopy Notebook!"
+echo " The notebook is running at ${TLPY_HOST}"
+echo " CTRL-C to quit"
+echo "- -=- -=- -=- -=- -=- -=- -=- -=- -=- -=- -=- -=- -"
 read
