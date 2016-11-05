@@ -1,21 +1,29 @@
 #!/bin/bash
 
-cwd=$PWD
-path=cwd/$1
+trap "kill 0" SIGINT
+
+export CWD=$PWD
 
 if [ "$1" = "dev" ]
 then
-    path=cwd/untitled.tlpy
     (gulp &)
 else
     (gulp > /dev/null 2>&1 &)
 fi
 
+sleep 1.5
+
 cd app
 
 export FLASK_APP=app
 export FLASK_DEBUG=1
-export TLPY_PATH=cwd/$1
+
+if [ -z "$1" ] || [ "$1" == "dev" ]
+then
+    export TLPY_PATH="${CWD}/untitled.tlpy"
+else
+    export TLPY_PATH="$CWD/$1"
+fi
 
 if [ "$1" = "dev" ]
 then
@@ -24,6 +32,8 @@ else
     (flask run > /dev/null 2>&1 &)
 fi
 
-python -m webbrowser http://127.0.0.1:5000/
+python -m webbrowser "http://127.0.0.1:5000/"
 
-cd cwd
+cd $CWD
+
+read

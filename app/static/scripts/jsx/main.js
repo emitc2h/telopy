@@ -23,38 +23,14 @@ var Cell = React.createClass({
     //     })
     // },
 
-    execute() {
+    execute(n) {
         // Send the command to the cell
         _this = this
         axios.post("http://127.0.0.1:5000/cell",
             {
                 source: this.refs[this.state.cell_id + "-source"].value,
                 cell_id: this.state.cell_id,
-                n_children: 1
-            }
-        ).then(
-            // Get the cell response
-            axios.get("http://127.0.0.1:5000/cell?cellid=" + _this.state.cell_id)
-                .then(function(result) {
-                    _this.setState({
-                        ..._this.state,
-                        source: result.data.source.join(''),
-                        stdout: result.data.outputs.stdout,
-                        children_id: result.data.children_id
-                    })
-                })
-            )
-    },
-
-    execute_spawn2() {
-        // Send the command to the cell
-        _this = this
-        axios.post("http://127.0.0.1:5000/cell",
-            {
-                source: this.refs[this.state.cell_id + "-source"].value,
-                cell_id: this.state.cell_id,
-                n_children: 2
-
+                n_children: n
             }
         ).then(
             // Get the cell response
@@ -85,8 +61,8 @@ var Cell = React.createClass({
 
         return (
             <div className="cell">
-                <button onClick={this.execute}>exec</button>
-                <button onClick={this.execute_spawn2}>branch</button>
+                <button onClick={() => this.execute(1)}>exec</button>
+                <button onClick={() => this.execute(2)}>branch</button>
                 <p>{this.state.cell_id}</p>
                 <Textarea
                     style={textareaStyle}

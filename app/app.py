@@ -10,7 +10,7 @@ app.config.from_object(__name__)
 # load default config and override config from an environment variable
 app.config.update(dict(
     CWD=os.getcwd(),
-    PATH=os.environ['TLPY_PATH'] if os.environ['TLPY_PATH'] else 'untitled.tlpy'
+    PATH=os.environ['TLPY_PATH']
 ))
 
 ctm = CellTreeManager(app.config['PATH'])
@@ -55,6 +55,10 @@ def cell():
         ctm.set_current_cell(cell_id)
         ctm.current_cell.update_from_string(source)
         ctm.execute(n_children)
+
+        print('='*20)
+        print(ctm.cells.keys())
+        print('-'*20)
 
         return Response(ctm.current_cell.cell_id)
 
