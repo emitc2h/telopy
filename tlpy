@@ -1,0 +1,29 @@
+#!/bin/bash
+
+cwd=$PWD
+path=cwd/$1
+
+if [ "$1" = "dev" ]
+then
+    path=cwd/untitled.tlpy
+    (gulp &)
+else
+    (gulp > /dev/null 2>&1 &)
+fi
+
+cd app
+
+export FLASK_APP=app
+export FLASK_DEBUG=1
+export TLPY_PATH=cwd/$1
+
+if [ "$1" = "dev" ]
+then
+    (flask run &)
+else
+    (flask run > /dev/null 2>&1 &)
+fi
+
+python -m webbrowser http://127.0.0.1:5000/
+
+cd cwd

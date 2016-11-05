@@ -1,7 +1,7 @@
 import os
 import json
 
-from flask import Flask, g, render_template, Response, request
+from flask import Flask, render_template, Response, request
 from cell_tree_manager import CellTreeManager
 
 app = Flask(__name__)
@@ -12,7 +12,6 @@ app.config.update(dict(
     CWD=os.getcwd(),
     PATH=os.environ['TLPY_PATH'] if os.environ['TLPY_PATH'] else 'untitled.tlpy'
 ))
-app.config.from_envvar('TLPY_SETTINGS', silent=True)
 
 ctm = CellTreeManager(app.config['PATH'])
 
@@ -56,10 +55,6 @@ def cell():
         ctm.set_current_cell(cell_id)
         ctm.current_cell.update_from_string(source)
         ctm.execute(n_children)
-
-        print('='*40)
-        print(ctm.cells.keys())
-        print('='*40)
 
         return Response(ctm.current_cell.cell_id)
 

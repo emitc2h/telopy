@@ -1,4 +1,205 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
+
+var Textarea = require('react-textarea-autosize').default;
+
+var Cell = React.createClass({
+    displayName: "Cell",
+
+
+    getInitialState() {
+
+        return {
+            cell_id: this.props.cell_id,
+            source: this.props.source,
+            stdout: this.props.stdout,
+            parent_id: this.props.parent_id,
+            children_id: this.props.children_id
+        };
+    },
+
+    // componentWillReceiveProps(nextProps) {
+    //     this.setState({
+    //         cell_id: nextProps.cell_id,
+    //         source: nextProps.source,
+    //         stdout: nextProps.stdout,
+    //         parent_id: nextProps.parent_id,
+    //         children_id: nextProps.children_id
+    //     })
+    // },
+
+    execute() {
+        // Send the command to the cell
+        _this = this;
+        axios.post("http://127.0.0.1:5000/cell", {
+            source: this.refs[this.state.cell_id + "-source"].value,
+            cell_id: this.state.cell_id,
+            n_children: 1
+        }).then(
+        // Get the cell response
+        axios.get("http://127.0.0.1:5000/cell?cellid=" + _this.state.cell_id).then(function (result) {
+            _this.setState(_extends({}, _this.state, {
+                source: result.data.source.join(''),
+                stdout: result.data.outputs.stdout,
+                children_id: result.data.children_id
+            }));
+        }));
+    },
+
+    execute_spawn2() {
+        // Send the command to the cell
+        _this = this;
+        axios.post("http://127.0.0.1:5000/cell", {
+            source: this.refs[this.state.cell_id + "-source"].value,
+            cell_id: this.state.cell_id,
+            n_children: 2
+
+        }).then(
+        // Get the cell response
+        axios.get("http://127.0.0.1:5000/cell?cellid=" + _this.state.cell_id).then(function (result) {
+            _this.setState(_extends({}, _this.state, {
+                source: result.data.source.join(''),
+                stdout: result.data.outputs.stdout,
+                children_id: result.data.children_id
+            }));
+        }));
+    },
+
+    render() {
+        const textareaStyle = {
+            margin: 'auto',
+            border: 'none',
+            resize: 'none',
+            width: '100%',
+            padding: '5px',
+            fontSize: '14px',
+            whiteSpace: 'pre',
+            fontFamily: '"Lucida Console", monospace',
+            backgroundColor: 'white'
+        };
+
+        return React.createElement(
+            "div",
+            { className: "cell" },
+            React.createElement(
+                "button",
+                { onClick: this.execute },
+                "exec"
+            ),
+            React.createElement(
+                "button",
+                { onClick: this.execute_spawn2 },
+                "branch"
+            ),
+            React.createElement(
+                "p",
+                null,
+                this.state.cell_id
+            ),
+            React.createElement(Textarea, {
+                style: textareaStyle,
+                minRows: "8",
+                defaultValue: this.state.source,
+                ref: this.state.cell_id + "-source" }),
+            React.createElement(
+                "code",
+                null,
+                this.state.stdout
+            )
+        );
+    }
+});
+
+var Notebook = React.createClass({
+    displayName: "Notebook",
+
+
+    propTypes: {
+        count: function (props, propName) {
+            if (typeof props[propName] !== "number") {
+                return new Error("the count must be a number");
+            }
+        }
+    },
+
+    getInitialState() {
+
+        var cells = [];
+        this.current_cell = {
+            cell_id: 'cell-0',
+            source: '',
+            stdout: '',
+            parent_id: null,
+            children_id: []
+        };
+        cells.push(this.current_cell);
+
+        return {
+            cells: cells,
+            current_cell: this.current_cell
+        };
+    },
+
+    add(source, stdout) {
+
+        _this = this;
+        axios.get("http://127.0.0.1:5000/cell?cellid=" + _this.current_cell.cell_id).then(function (result) {
+            children_id = result.data.children_id;
+
+            _this.current_cell.children_id = children_id;
+
+            var cells = [..._this.state.cells];
+
+            for (i = 0; i < children_id.length; i++) {
+                var cell_id = children_id[i];
+                var new_cell = {
+                    cell_id: cell_id,
+                    source: source,
+                    stdout: stdout,
+                    parent_id: _this.current_cell.parent_id,
+                    children_id: []
+                };
+                cells.push(new_cell);
+                _this.current_cell = new_cell;
+            }
+            _this.setState({ cells });
+        });
+    },
+
+    update(new_source, cell_id) {
+        var cells = this.state.cells.map(cell => cell.cell_id !== cell_id ? cell : _extends({}, cell, {
+            source: new_source
+        }));
+        this.setState({ cells });
+    },
+
+    eachCell(cell) {
+        return React.createElement(Cell, { key: cell.cell_id,
+            cell_id: cell.cell_id,
+            source: cell.source,
+            stdout: cell.stdout,
+            parent_id: cell.parent_id,
+            children_id: cell.children_id,
+            onChange: this.update });
+    },
+
+    render() {
+        return React.createElement(
+            "div",
+            { className: "board" },
+            this.state.cells.map(this.eachCell),
+            React.createElement(
+                "button",
+                { onClick: () => this.add('', '') },
+                "+"
+            )
+        );
+    }
+});
+
+ReactDOM.render(React.createElement(Notebook, { count: 10 }), document.getElementById('react-container'));
+
+},{"react-textarea-autosize":9}],2:[function(require,module,exports){
 "use strict";
 
 /**
@@ -37,7 +238,7 @@ emptyFunction.thatReturnsArgument = function (arg) {
 };
 
 module.exports = emptyFunction;
-},{}],2:[function(require,module,exports){
+},{}],3:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
@@ -59,7 +260,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 module.exports = emptyObject;
 }).call(this,require('_process'))
-},{"_process":7}],3:[function(require,module,exports){
+},{"_process":8}],4:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
@@ -111,7 +312,7 @@ function invariant(condition, format, a, b, c, d, e, f) {
 
 module.exports = invariant;
 }).call(this,require('_process'))
-},{"_process":7}],4:[function(require,module,exports){
+},{"_process":8}],5:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
@@ -161,7 +362,7 @@ var keyMirror = function keyMirror(obj) {
 
 module.exports = keyMirror;
 }).call(this,require('_process'))
-},{"./invariant":3,"_process":7}],5:[function(require,module,exports){
+},{"./invariant":4,"_process":8}],6:[function(require,module,exports){
 "use strict";
 
 /**
@@ -196,7 +397,7 @@ var keyOf = function keyOf(oneKeyObj) {
 };
 
 module.exports = keyOf;
-},{}],6:[function(require,module,exports){
+},{}],7:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2014-2015, Facebook, Inc.
@@ -265,7 +466,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 module.exports = warning;
 }).call(this,require('_process'))
-},{"./emptyFunction":1,"_process":7}],7:[function(require,module,exports){
+},{"./emptyFunction":2,"_process":8}],8:[function(require,module,exports){
 // shim for using process in browser
 var process = module.exports = {};
 
@@ -447,7 +648,7 @@ process.chdir = function (dir) {
 };
 process.umask = function() { return 0; };
 
-},{}],8:[function(require,module,exports){
+},{}],9:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -734,7 +935,7 @@ function clearNextFrameAction(nextFrameId) {
   }
 }
 
-},{"./calculateNodeHeight":9,"react":35}],9:[function(require,module,exports){
+},{"./calculateNodeHeight":10,"react":36}],10:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -848,7 +1049,7 @@ function calculateNodeStyling(node) {
   return nodeInfo;
 }
 
-},{}],10:[function(require,module,exports){
+},{}],11:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -908,7 +1109,7 @@ var KeyEscapeUtils = {
 };
 
 module.exports = KeyEscapeUtils;
-},{}],11:[function(require,module,exports){
+},{}],12:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -1032,7 +1233,7 @@ var PooledClass = {
 
 module.exports = PooledClass;
 }).call(this,require('_process'))
-},{"./reactProdInvariant":32,"_process":7,"fbjs/lib/invariant":3}],12:[function(require,module,exports){
+},{"./reactProdInvariant":33,"_process":8,"fbjs/lib/invariant":4}],13:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -1124,7 +1325,7 @@ var React = {
 
 module.exports = React;
 }).call(this,require('_process'))
-},{"./ReactChildren":13,"./ReactClass":14,"./ReactComponent":15,"./ReactDOMFactories":18,"./ReactElement":19,"./ReactElementValidator":20,"./ReactPropTypes":24,"./ReactPureComponent":26,"./ReactVersion":27,"./onlyChild":31,"_process":7,"fbjs/lib/warning":6,"object-assign":34}],13:[function(require,module,exports){
+},{"./ReactChildren":14,"./ReactClass":15,"./ReactComponent":16,"./ReactDOMFactories":19,"./ReactElement":20,"./ReactElementValidator":21,"./ReactPropTypes":25,"./ReactPureComponent":27,"./ReactVersion":28,"./onlyChild":32,"_process":8,"fbjs/lib/warning":7,"object-assign":35}],14:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -1316,7 +1517,7 @@ var ReactChildren = {
 };
 
 module.exports = ReactChildren;
-},{"./PooledClass":11,"./ReactElement":19,"./traverseAllChildren":33,"fbjs/lib/emptyFunction":1}],14:[function(require,module,exports){
+},{"./PooledClass":12,"./ReactElement":20,"./traverseAllChildren":34,"fbjs/lib/emptyFunction":2}],15:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -2051,7 +2252,7 @@ var ReactClass = {
 
 module.exports = ReactClass;
 }).call(this,require('_process'))
-},{"./ReactComponent":15,"./ReactElement":19,"./ReactNoopUpdateQueue":21,"./ReactPropTypeLocationNames":22,"./ReactPropTypeLocations":23,"./reactProdInvariant":32,"_process":7,"fbjs/lib/emptyObject":2,"fbjs/lib/invariant":3,"fbjs/lib/keyMirror":4,"fbjs/lib/keyOf":5,"fbjs/lib/warning":6,"object-assign":34}],15:[function(require,module,exports){
+},{"./ReactComponent":16,"./ReactElement":20,"./ReactNoopUpdateQueue":22,"./ReactPropTypeLocationNames":23,"./ReactPropTypeLocations":24,"./reactProdInvariant":33,"_process":8,"fbjs/lib/emptyObject":3,"fbjs/lib/invariant":4,"fbjs/lib/keyMirror":5,"fbjs/lib/keyOf":6,"fbjs/lib/warning":7,"object-assign":35}],16:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -2172,7 +2373,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 module.exports = ReactComponent;
 }).call(this,require('_process'))
-},{"./ReactNoopUpdateQueue":21,"./canDefineProperty":28,"./reactProdInvariant":32,"_process":7,"fbjs/lib/emptyObject":2,"fbjs/lib/invariant":3,"fbjs/lib/warning":6}],16:[function(require,module,exports){
+},{"./ReactNoopUpdateQueue":22,"./canDefineProperty":29,"./reactProdInvariant":33,"_process":8,"fbjs/lib/emptyObject":3,"fbjs/lib/invariant":4,"fbjs/lib/warning":7}],17:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2016-present, Facebook, Inc.
@@ -2517,7 +2718,7 @@ var ReactComponentTreeHook = {
 
 module.exports = ReactComponentTreeHook;
 }).call(this,require('_process'))
-},{"./ReactCurrentOwner":17,"./reactProdInvariant":32,"_process":7,"fbjs/lib/invariant":3,"fbjs/lib/warning":6}],17:[function(require,module,exports){
+},{"./ReactCurrentOwner":18,"./reactProdInvariant":33,"_process":8,"fbjs/lib/invariant":4,"fbjs/lib/warning":7}],18:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -2549,7 +2750,7 @@ var ReactCurrentOwner = {
 };
 
 module.exports = ReactCurrentOwner;
-},{}],18:[function(require,module,exports){
+},{}],19:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -2722,7 +2923,7 @@ var ReactDOMFactories = {
 
 module.exports = ReactDOMFactories;
 }).call(this,require('_process'))
-},{"./ReactElement":19,"./ReactElementValidator":20,"_process":7}],19:[function(require,module,exports){
+},{"./ReactElement":20,"./ReactElementValidator":21,"_process":8}],20:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2014-present, Facebook, Inc.
@@ -3073,7 +3274,7 @@ ReactElement.REACT_ELEMENT_TYPE = REACT_ELEMENT_TYPE;
 
 module.exports = ReactElement;
 }).call(this,require('_process'))
-},{"./ReactCurrentOwner":17,"./canDefineProperty":28,"_process":7,"fbjs/lib/warning":6,"object-assign":34}],20:[function(require,module,exports){
+},{"./ReactCurrentOwner":18,"./canDefineProperty":29,"_process":8,"fbjs/lib/warning":7,"object-assign":35}],21:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2014-present, Facebook, Inc.
@@ -3304,7 +3505,7 @@ var ReactElementValidator = {
 
 module.exports = ReactElementValidator;
 }).call(this,require('_process'))
-},{"./ReactComponentTreeHook":16,"./ReactCurrentOwner":17,"./ReactElement":19,"./ReactPropTypeLocations":23,"./canDefineProperty":28,"./checkReactTypeSpec":29,"./getIteratorFn":30,"_process":7,"fbjs/lib/warning":6}],21:[function(require,module,exports){
+},{"./ReactComponentTreeHook":17,"./ReactCurrentOwner":18,"./ReactElement":20,"./ReactPropTypeLocations":24,"./canDefineProperty":29,"./checkReactTypeSpec":30,"./getIteratorFn":31,"_process":8,"fbjs/lib/warning":7}],22:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2015-present, Facebook, Inc.
@@ -3403,7 +3604,7 @@ var ReactNoopUpdateQueue = {
 
 module.exports = ReactNoopUpdateQueue;
 }).call(this,require('_process'))
-},{"_process":7,"fbjs/lib/warning":6}],22:[function(require,module,exports){
+},{"_process":8,"fbjs/lib/warning":7}],23:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -3430,7 +3631,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 module.exports = ReactPropTypeLocationNames;
 }).call(this,require('_process'))
-},{"_process":7}],23:[function(require,module,exports){
+},{"_process":8}],24:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -3453,7 +3654,7 @@ var ReactPropTypeLocations = keyMirror({
 });
 
 module.exports = ReactPropTypeLocations;
-},{"fbjs/lib/keyMirror":4}],24:[function(require,module,exports){
+},{"fbjs/lib/keyMirror":5}],25:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -3887,7 +4088,7 @@ function getClassName(propValue) {
 
 module.exports = ReactPropTypes;
 }).call(this,require('_process'))
-},{"./ReactElement":19,"./ReactPropTypeLocationNames":22,"./ReactPropTypesSecret":25,"./getIteratorFn":30,"_process":7,"fbjs/lib/emptyFunction":1,"fbjs/lib/warning":6}],25:[function(require,module,exports){
+},{"./ReactElement":20,"./ReactPropTypeLocationNames":23,"./ReactPropTypesSecret":26,"./getIteratorFn":31,"_process":8,"fbjs/lib/emptyFunction":2,"fbjs/lib/warning":7}],26:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -3904,7 +4105,7 @@ module.exports = ReactPropTypes;
 var ReactPropTypesSecret = 'SECRET_DO_NOT_PASS_THIS_OR_YOU_WILL_BE_FIRED';
 
 module.exports = ReactPropTypesSecret;
-},{}],26:[function(require,module,exports){
+},{}],27:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -3947,7 +4148,7 @@ _assign(ReactPureComponent.prototype, ReactComponent.prototype);
 ReactPureComponent.prototype.isPureReactComponent = true;
 
 module.exports = ReactPureComponent;
-},{"./ReactComponent":15,"./ReactNoopUpdateQueue":21,"fbjs/lib/emptyObject":2,"object-assign":34}],27:[function(require,module,exports){
+},{"./ReactComponent":16,"./ReactNoopUpdateQueue":22,"fbjs/lib/emptyObject":3,"object-assign":35}],28:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -3962,7 +4163,7 @@ module.exports = ReactPureComponent;
 'use strict';
 
 module.exports = '15.3.2';
-},{}],28:[function(require,module,exports){
+},{}],29:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -3989,7 +4190,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 module.exports = canDefineProperty;
 }).call(this,require('_process'))
-},{"_process":7}],29:[function(require,module,exports){
+},{"_process":8}],30:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -4079,7 +4280,7 @@ function checkReactTypeSpec(typeSpecs, values, location, componentName, element,
 
 module.exports = checkReactTypeSpec;
 }).call(this,require('_process'))
-},{"./ReactComponentTreeHook":16,"./ReactPropTypeLocationNames":22,"./ReactPropTypesSecret":25,"./reactProdInvariant":32,"_process":7,"fbjs/lib/invariant":3,"fbjs/lib/warning":6}],30:[function(require,module,exports){
+},{"./ReactComponentTreeHook":17,"./ReactPropTypeLocationNames":23,"./ReactPropTypesSecret":26,"./reactProdInvariant":33,"_process":8,"fbjs/lib/invariant":4,"fbjs/lib/warning":7}],31:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -4121,7 +4322,7 @@ function getIteratorFn(maybeIterable) {
 }
 
 module.exports = getIteratorFn;
-},{}],31:[function(require,module,exports){
+},{}],32:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -4162,7 +4363,7 @@ function onlyChild(children) {
 
 module.exports = onlyChild;
 }).call(this,require('_process'))
-},{"./ReactElement":19,"./reactProdInvariant":32,"_process":7,"fbjs/lib/invariant":3}],32:[function(require,module,exports){
+},{"./ReactElement":20,"./reactProdInvariant":33,"_process":8,"fbjs/lib/invariant":4}],33:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -4202,7 +4403,7 @@ function reactProdInvariant(code) {
 }
 
 module.exports = reactProdInvariant;
-},{}],33:[function(require,module,exports){
+},{}],34:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -4372,7 +4573,7 @@ function traverseAllChildren(children, callback, traverseContext) {
 
 module.exports = traverseAllChildren;
 }).call(this,require('_process'))
-},{"./KeyEscapeUtils":10,"./ReactCurrentOwner":17,"./ReactElement":19,"./getIteratorFn":30,"./reactProdInvariant":32,"_process":7,"fbjs/lib/invariant":3,"fbjs/lib/warning":6}],34:[function(require,module,exports){
+},{"./KeyEscapeUtils":11,"./ReactCurrentOwner":18,"./ReactElement":20,"./getIteratorFn":31,"./reactProdInvariant":33,"_process":8,"fbjs/lib/invariant":4,"fbjs/lib/warning":7}],35:[function(require,module,exports){
 'use strict';
 /* eslint-disable no-unused-vars */
 var hasOwnProperty = Object.prototype.hasOwnProperty;
@@ -4457,210 +4658,9 @@ module.exports = shouldUseNative() ? Object.assign : function (target, source) {
 	return to;
 };
 
-},{}],35:[function(require,module,exports){
+},{}],36:[function(require,module,exports){
 'use strict';
 
 module.exports = require('./lib/React');
 
-},{"./lib/React":12}],36:[function(require,module,exports){
-var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
-
-var Textarea = require('react-textarea-autosize').default;
-
-var Cell = React.createClass({
-    displayName: "Cell",
-
-
-    getInitialState() {
-
-        return {
-            cell_id: this.props.cell_id,
-            source: this.props.source,
-            stdout: this.props.stdout,
-            parent_id: this.props.parent_id,
-            children_id: this.props.children_id
-        };
-    },
-
-    // componentWillReceiveProps(nextProps) {
-    //     this.setState({
-    //         cell_id: nextProps.cell_id,
-    //         source: nextProps.source,
-    //         stdout: nextProps.stdout,
-    //         parent_id: nextProps.parent_id,
-    //         children_id: nextProps.children_id
-    //     })
-    // },
-
-    execute() {
-        // Send the command to the cell
-        _this = this;
-        axios.post("http://127.0.0.1:5000/cell", {
-            source: this.refs[this.state.cell_id + "-source"].value,
-            cell_id: this.state.cell_id,
-            n_children: 1
-        }).then(
-        // Get the cell response
-        axios.get("http://127.0.0.1:5000/cell?cellid=" + _this.state.cell_id).then(function (result) {
-            _this.setState(_extends({}, _this.state, {
-                source: result.data.source.join(''),
-                stdout: result.data.outputs.stdout,
-                children_id: result.data.children_id
-            }));
-        }));
-    },
-
-    execute_spawn2() {
-        // Send the command to the cell
-        _this = this;
-        axios.post("http://127.0.0.1:5000/cell", {
-            source: this.refs[this.state.cell_id + "-source"].value,
-            cell_id: this.state.cell_id,
-            n_children: 2
-
-        }).then(
-        // Get the cell response
-        axios.get("http://127.0.0.1:5000/cell?cellid=" + _this.state.cell_id).then(function (result) {
-            _this.setState(_extends({}, _this.state, {
-                source: result.data.source.join(''),
-                stdout: result.data.outputs.stdout,
-                children_id: result.data.children_id
-            }));
-        }));
-    },
-
-    render() {
-        const textareaStyle = {
-            margin: 'auto',
-            border: 'none',
-            resize: 'none',
-            width: '100%',
-            padding: '5px',
-            fontSize: '14px',
-            whiteSpace: 'pre',
-            fontFamily: '"Lucida Console", monospace',
-            backgroundColor: 'white'
-        };
-
-        return React.createElement(
-            "div",
-            { className: "cell" },
-            React.createElement(
-                "button",
-                { onClick: this.execute },
-                "exec"
-            ),
-            React.createElement(
-                "button",
-                { onClick: this.execute_spawn2 },
-                "branch"
-            ),
-            React.createElement(
-                "p",
-                null,
-                this.state.cell_id
-            ),
-            React.createElement(Textarea, {
-                style: textareaStyle,
-                minRows: "8",
-                defaultValue: this.state.source,
-                ref: this.state.cell_id + "-source" }),
-            React.createElement(
-                "code",
-                null,
-                this.state.stdout
-            )
-        );
-    }
-});
-
-var Notebook = React.createClass({
-    displayName: "Notebook",
-
-
-    propTypes: {
-        count: function (props, propName) {
-            if (typeof props[propName] !== "number") {
-                return new Error("the count must be a number");
-            }
-        }
-    },
-
-    getInitialState() {
-
-        var cells = [];
-        this.current_cell = {
-            cell_id: 'cell-0',
-            source: '',
-            stdout: '',
-            parent_id: null,
-            children_id: []
-        };
-        cells.push(this.current_cell);
-
-        return {
-            cells: cells,
-            current_cell: this.current_cell
-        };
-    },
-
-    add(source, stdout) {
-
-        _this = this;
-        axios.get("http://127.0.0.1:5000/cell?cellid=" + _this.current_cell.cell_id).then(function (result) {
-            children_id = result.data.children_id;
-
-            _this.current_cell.children_id = children_id;
-
-            var cells = [..._this.state.cells];
-
-            for (i = 0; i < children_id.length; i++) {
-                var cell_id = children_id[i];
-                var new_cell = {
-                    cell_id: cell_id,
-                    source: source,
-                    stdout: stdout,
-                    parent_id: _this.current_cell.parent_id,
-                    children_id: []
-                };
-                cells.push(new_cell);
-                _this.current_cell = new_cell;
-            }
-            _this.setState({ cells });
-        });
-    },
-
-    update(new_source, cell_id) {
-        var cells = this.state.cells.map(cell => cell.cell_id !== cell_id ? cell : _extends({}, cell, {
-            source: new_source
-        }));
-        this.setState({ cells });
-    },
-
-    eachCell(cell) {
-        return React.createElement(Cell, { key: cell.cell_id,
-            cell_id: cell.cell_id,
-            source: cell.source,
-            stdout: cell.stdout,
-            parent_id: cell.parent_id,
-            children_id: cell.children_id,
-            onChange: this.update });
-    },
-
-    render() {
-        return React.createElement(
-            "div",
-            { className: "board" },
-            this.state.cells.map(this.eachCell),
-            React.createElement(
-                "button",
-                { onClick: () => this.add('', '') },
-                "+"
-            )
-        );
-    }
-});
-
-ReactDOM.render(React.createElement(Notebook, { count: 10 }), document.getElementById('react-container'));
-
-},{"react-textarea-autosize":8}]},{},[36]);
+},{"./lib/React":13}]},{},[1]);
