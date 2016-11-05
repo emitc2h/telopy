@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+  <head lang="en">
+    <meta charset="UTF-8">
+    <title>Pyle Notebook : {{path}}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- styles -->
+    <link rel="stylesheet" type=text/css href="{{ url_for('static', filename='bower_components/prism/themes/prism.css') }}">
+    <script src="{{ url_for('static', filename='bower_components/prism/themes/prism.css') }}"></script>
+    <script src="{{ url_for('static', filename='bower_components/codeflask.js/src/codeflask.css') }}"></script>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+      #my-code-wrapper {
+        width:350px;
+        height:250px;
+        position:relative; /* Position must be: relative, absolute or fixed */
+      }
+  </style>
+  </head>
+  <body>
+      <h1>Pyle Notebook</h1>
+      <h3>{{path}}</h3>
+      <br>
+      <div id="react-container"></div>
+    <!-- scripts -->
+    <script src="{{ url_for('static', filename='bower_components/react/react.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='bower_components/react/react-dom.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='bower_components/axios/dist/axios.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='bower_components/prism/prism.js') }}"></script>
+    <script src="{{ url_for('static', filename='bower_components/codeflask.js/src/codeflask.js') }}"></script>
+    <script src="{{ url_for('static', filename='scripts/js/main.js') }}"></script>
+  </body>
+</html>
